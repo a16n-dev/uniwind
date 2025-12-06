@@ -5,6 +5,8 @@ class CSSListenerBuilder {
     private classNameMediaQueryListeners = new Map<string, MediaQueryList>()
     private listeners = new Map<MediaQueryList, Set<VoidFunction>>()
     private registeredRules = new Map<string, MediaQueryList>()
+    private processedStyleSheets = new WeakSet<CSSStyleSheet>()
+    private pendingInitialization: number | undefined = undefined
 
     constructor() {
         if (typeof document === 'undefined') {
@@ -14,7 +16,7 @@ class CSSListenerBuilder {
         const observer = new MutationObserver(mutations => {
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
-                    this.initialize()
+                    this.scheduleInitialization()
                 }
             }
         })
@@ -53,8 +55,43 @@ class CSSListenerBuilder {
         }
     }
 
+    private scheduleInitialization() {
+        this.cancelPendingInitialization()
+
+        if (typeof requestIdleCallback !== 'undefined') {
+            this.pendingInitialization = requestIdleCallback(() => {
+                this.initialize()
+            }, { timeout: 50 })
+
+            return
+        }
+
+        this.pendingInitialization = setTimeout(() => {
+            this.initialize()
+        }, 50) as unknown as number
+    }
+
+    private cancelPendingInitialization() {
+        if (this.pendingInitialization !== undefined) {
+            if (typeof cancelIdleCallback !== 'undefined') {
+                cancelIdleCallback(this.pendingInitialization)
+            } else {
+                clearTimeout(this.pendingInitialization)
+            }
+
+            this.pendingInitialization = undefined
+        }
+    }
+
     private initialize() {
+        this.pendingInitialization = undefined
+
         for (const sheet of Array.from(document.styleSheets)) {
+            // Skip already processed stylesheets
+            if (this.processedStyleSheets.has(sheet)) {
+                continue
+            }
+
             let rules: CSSRuleList
 
             try {
@@ -68,6 +105,9 @@ class CSSListenerBuilder {
             if (!rules) {
                 continue
             }
+
+            // Mark as processed after successful cssRules access
+            this.processedStyleSheets.add(sheet)
 
             this.addMediaQueriesDeep(rules)
         }
