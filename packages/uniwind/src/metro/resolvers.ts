@@ -37,6 +37,7 @@ const SUPPORTED_COMPONENTS = [
     'TouchableWithoutFeedback',
     'View',
     'VirtualizedList',
+    'createOrderedCSSStyleSheet',
 ]
 
 export const nativeResolver = ({
@@ -88,8 +89,14 @@ export const webResolver = ({
     }
 
     const segments = resolution.filePath.split(sep)
-    const isIndex = segments.at(-1)?.startsWith('index.')
+    const filename = segments.at(-1) ?? ''
+    const isIndex = filename.startsWith('index.')
     const module = segments.at(-2)
+
+    // Handle createOrderedCSSStyleSheet which is in StyleSheet/dom/ subdirectory
+    if (filename.startsWith('createOrderedCSSStyleSheet.')) {
+        return resolver(context, `${name}/components/createOrderedCSSStyleSheet`, platform)
+    }
 
     if (!isIndex || module === undefined || !SUPPORTED_COMPONENTS.includes(module) || context.originModulePath.endsWith(`${module}${sep}index.js`)) {
         return resolution
