@@ -19,8 +19,8 @@ const wrapInLayer = (cssText: string): string => {
     const trimmed = cssText.trim()
 
     // Only wrap rules that start with .css- (react-native-web generated classes)
-    if (trimmed.startsWith('.css-')) {
-        return `@layer rnw{${trimmed}}`
+    if (/^(\.css|[a-z])/.test(trimmed)) {
+        return `@layer rnw.${hashString(trimmed)} {${trimmed}}`
     }
 
     return cssText
@@ -35,23 +35,8 @@ const createOrderedCSSStyleSheet = (sheet: CSSStyleSheet | null): OrderedCSSStyl
 
     return {
         getTextContent: () => {
-            const textContent = original.getTextContent()
-
-            // Process the text content to wrap .css- rules in @layer rnw
-            return textContent
-                .split('\n')
-                .map(line => {
-                    const trimmed = line.trim()
-
-                    if (trimmed.startsWith('.css-')) {
-                        return `@layer rnw{${trimmed}}`
-                    }
-
-                    return line
-                })
-                .join('\n')
+            return original.getTextContent()
         },
-
         insert: (cssText: string, groupValue: number) => {
             // Wrap .css- rules in @layer rnw before insertion
             const wrappedCssText = wrapInLayer(cssText)
@@ -59,6 +44,18 @@ const createOrderedCSSStyleSheet = (sheet: CSSStyleSheet | null): OrderedCSSStyl
             original.insert(wrappedCssText, groupValue)
         },
     }
+}
+
+const hashString = (text: string) => {
+    let hash = 0
+    for (let i = 0; i < text.length; i++) {
+        const char = text.charCodeAt(i)
+        // eslint-disable-next-line no-bitwise
+        hash = (hash << 5) - hash + char
+        // eslint-disable-next-line no-bitwise
+        hash |= 0 // Convert to 32bit integer
+    }
+    return Math.abs(hash)
 }
 
 export default createOrderedCSSStyleSheet
