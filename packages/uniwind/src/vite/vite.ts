@@ -19,6 +19,10 @@ const componentPath = path.resolve(
     dirname,
     '../module/components/web/index.js',
 )
+const cssStyleSheetPath = path.resolve(
+    dirname,
+    '../module/components/web/createOrderedCSSStyleSheet.js',
+)
 
 export const uniwind = ({
     cssEntryFile,
@@ -45,6 +49,27 @@ export const uniwind = ({
             },
             optimizeDeps: {
                 exclude: [UNIWIND_PACKAGE_NAME, 'react-native'],
+                esbuildOptions: {
+                    plugins: [
+                        {
+                            name: 'rnw-rewrite-createOrderedCSSStyleSheet',
+                            setup: (build) => {
+                                build.onResolve(
+                                    { filter: /createOrderedCSSStyleSheet$/ },
+                                    (args) => {
+                                        if (
+                                            args.importer.includes(
+                                                'react-native-web/dist/exports/StyleSheet',
+                                            )
+                                        ) {
+                                            return { path: cssStyleSheetPath }
+                                        }
+                                    },
+                                )
+                            },
+                        },
+                    ],
+                },
             },
             resolve: {
                 alias: [
