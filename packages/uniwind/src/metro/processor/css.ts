@@ -209,7 +209,7 @@ export class CSS {
                 case 'milliseconds':
                     return `${declarationValue.value}ms`
                 case 'pair':
-                    return declarationValue.inside.type
+                    return declarationValue.inside.type === 'box' ? 'flex' : declarationValue.inside.type
                 case 'currentcolor':
                     return 'this["currentColor"]'
                 case 'calc':
